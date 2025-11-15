@@ -4,13 +4,15 @@ struct ContentView: View {
     @State private var display: String = "0"
     @State private var accumulator: Double? = nil
     @State private var pendingOperator: String? = nil
-    @State private var waitingForNewNumber: Bool = false
+    @State private var waitingForNewNumber = false
+    @State private var operationDisplay: String = ""
 
     let buttons: [[String]] = [
-        ["7","8","9","+"],
-        ["4","5","6","="],
-        ["1","2","3","C"],
-        ["0"]
+        ["7","8","9","÷"],
+        ["4","5","6","×"],
+        ["1","2","3","−"],
+        ["0",".","C","+"],
+        ["="]
     ]
 
     var body: some View {
@@ -18,14 +20,21 @@ struct ContentView: View {
             VStack(spacing: 12) {
                 Spacer()
 
-                Text(display)
-                    .font(.system(size: min(geo.size.width, geo.size.height) * 0.12))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.3)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(operationDisplay)
+                        .font(.system(size: 24))
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+
+                    Text(display)
+                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.12))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.3)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(8)
 
                 ForEach(buttons, id: \.self) { row in
                     HStack(spacing: 12) {
@@ -35,16 +44,14 @@ struct ContentView: View {
                                     .font(.system(size: 28, weight: .medium))
                                     .frame(height: buttonHeight(for: geo))
                                     .frame(maxWidth: .infinity)
-                                    .background(buttonBackground(title: title))
-                                    .foregroundColor(buttonForeground(title: title))
+                                    .background(buttonBackground(title))
+                                    .foregroundColor(buttonForeground(title))
                                     .cornerRadius(12)
                             }
                         }
-
                         if row.count < 4 {
                             ForEach(0..<(4 - row.count), id: \.self) { _ in
-                                Spacer(minLength: 0)
-                                    .frame(maxWidth: .infinity)
+                                Spacer(minLength: 0).frame(maxWidth: .infinity)
                             }
                         }
                     }
@@ -54,34 +61,50 @@ struct ContentView: View {
         }
     }
 
-    private func buttonHeight(for geo: GeometryProxy) -> CGFloat {
-        let totalSpacing: CGFloat = 12 * 4 + 16
-        let available = geo.size.height - 200 - totalSpacing
-        return max(44, available / 8)
+    private func buttonBackground(_ title: String) -> Color {
+        switch title {
+        case "C": return Color(.systemRed)
+        case "+", "−", "×", "÷", "=": return Color(.systemOrange)
+        default: return Color(.systemGray5)
+        }
     }
 
-    private func buttonBackground(title: String) -> Color {
-        if title == "C" { return Color(.systemRed).opacity(0.85) }
-        if title == "+" || title == "=" { return Color(.systemOrange).opacity(0.9) }
-        return Color(.systemGray5)
+    private func buttonForeground(_ title: String) -> Color {
+        switch title {
+        case "C", "+", "−", "×", "÷", "=": return .white
+        default: return .primary
+        }
     }
-    private func buttonForeground(title: String) -> Color {
-        if title == "C" || title == "+" || title == "=" { return .white }
-        return .primary
+
+    private func buttonHeight(for geo: GeometryProxy) -> CGFloat {
+        return (geo.size.height - 200) / 9
     }
 
     private func buttonPressed(_ value: String) {
         switch value {
         case "C":
             clearAll()
-        case "+":
-            applyPendingOperatorIfNeeded()
-            pendingOperator = "+"
+            operationDisplay = ""
+
+        case "+", "−", "×", "÷":
+            if accumulator == nil {
+                accumulator = Double(display)
+            }
+            pendingOperator = value
             waitingForNewNumber = true
+            operationDisplay = "\(formatted(accumulator ?? 0)) \(value)"
+
+
         case "=":
-            applyPendingOperatorIfNeeded()
+            applyPendingOperator()
             pendingOperator = nil
             waitingForNewNumber = true
+            accumulator = Double(display)
+            operationDisplay = ""
+
+        case ".":
+            insertDecimal()
+
         default:
             handleDigit(value)
         }
@@ -96,21 +119,51 @@ struct ContentView: View {
         }
     }
 
-    private func applyPendingOperatorIfNeeded() {
-        let current = Double(display) ?? 0.0
+    private func insertDecimal() {
+        if waitingForNewNumber {
+            display = "0."
+            waitingForNewNumber = false
+        } else if !display.contains(".") {
+            display += "."
+        }
+    }
+
+    private func applyPendingOperator() {
+        let current = Double(display) ?? 0
 
         if let op = pendingOperator, let acc = accumulator {
+            var result = acc
+
             switch op {
-            case "+":
-                let result = acc + current
-                accumulator = result
-                display = formatted(result)
-            default:
-                break
+            case "+": result = acc + current
+            case "−": result = acc - current
+            case "×": result = acc * current
+            case "÷":
+                if current != 0 {
+                    result = acc / current
+                } else {
+                    display = "Error"
+                    accumulator = nil
+                    pendingOperator = nil
+                    operationDisplay = ""
+                    return
+                }
+            default: break
             }
+
+            accumulator = result
+            display = formatted(result)
         } else {
             accumulator = current
         }
+    }
+
+    private func formatted(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 10
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
     private func clearAll() {
@@ -118,14 +171,6 @@ struct ContentView: View {
         accumulator = nil
         pendingOperator = nil
         waitingForNewNumber = false
-    }
-
-    private func formatted(_ value: Double) -> String {
-        if value.rounded(.towardZero) == value {
-            return String(Int(value))
-        } else {
-            return String(value)
-        }
     }
 }
 
