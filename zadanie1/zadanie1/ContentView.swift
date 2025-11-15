@@ -8,10 +8,10 @@ struct ContentView: View {
     @State private var operationDisplay: String = ""
 
     let buttons: [[String]] = [
-        ["7","8","9","÷"],
-        ["4","5","6","×"],
-        ["1","2","3","−"],
-        ["0",".","C","+"],
+        ["7","8","9","÷","log"],
+        ["4","5","6","×","^"],
+        ["1","2","3","−","±"],
+        ["0",".","C","+","%"],
         ["="]
     ]
 
@@ -19,13 +19,11 @@ struct ContentView: View {
         GeometryReader { geo in
             VStack(spacing: 12) {
                 Spacer()
-
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(operationDisplay)
                         .font(.system(size: 24))
                         .foregroundColor(.gray)
                         .frame(maxWidth: .infinity, alignment: .trailing)
-
                     Text(display)
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.12))
                         .lineLimit(1)
@@ -49,8 +47,8 @@ struct ContentView: View {
                                     .cornerRadius(12)
                             }
                         }
-                        if row.count < 4 {
-                            ForEach(0..<(4 - row.count), id: \.self) { _ in
+                        if row.count < 5 {
+                            ForEach(0..<(5 - row.count), id: \.self) { _ in
                                 Spacer(minLength: 0).frame(maxWidth: .infinity)
                             }
                         }
@@ -64,20 +62,20 @@ struct ContentView: View {
     private func buttonBackground(_ title: String) -> Color {
         switch title {
         case "C": return Color(.systemRed)
-        case "+", "−", "×", "÷", "=": return Color(.systemOrange)
+        case "+", "−", "×", "÷", "=","^","log","±","%": return Color(.systemOrange)
         default: return Color(.systemGray5)
         }
     }
 
     private func buttonForeground(_ title: String) -> Color {
         switch title {
-        case "C", "+", "−", "×", "÷", "=": return .white
+        case "C", "+", "−", "×", "÷", "=","^","log","±","%": return .white
         default: return .primary
         }
     }
 
     private func buttonHeight(for geo: GeometryProxy) -> CGFloat {
-        return (geo.size.height - 200) / 9
+        return (geo.size.height - 200) / 10
     }
 
     private func buttonPressed(_ value: String) {
@@ -85,26 +83,46 @@ struct ContentView: View {
         case "C":
             clearAll()
             operationDisplay = ""
-
-        case "+", "−", "×", "÷":
+        case "+", "−", "×", "÷","^":
             if accumulator == nil {
                 accumulator = Double(display)
+            } else if !waitingForNewNumber {
+                applyPendingOperator()
             }
             pendingOperator = value
             waitingForNewNumber = true
             operationDisplay = "\(formatted(accumulator ?? 0)) \(value)"
-
-
         case "=":
             applyPendingOperator()
             pendingOperator = nil
             waitingForNewNumber = true
             accumulator = Double(display)
             operationDisplay = ""
-
         case ".":
             insertDecimal()
-
+        case "±":
+            if let current = Double(display) {
+                display = formatted(-current)
+            }
+        case "%":
+            if let current = Double(display) {
+                let percentValue = current / 100
+                display = formatted(percentValue)
+                if accumulator == nil || waitingForNewNumber {
+                    accumulator = percentValue
+                }
+                waitingForNewNumber = true
+            }
+        case "log":
+            if let current = Double(display), current > 0 {
+                display = formatted(log10(current))
+                accumulator = Double(display)
+            } else {
+                display = "Error"
+                accumulator = nil
+                pendingOperator = nil
+                operationDisplay = ""
+            }
         default:
             handleDigit(value)
         }
@@ -130,14 +148,15 @@ struct ContentView: View {
 
     private func applyPendingOperator() {
         let current = Double(display) ?? 0
-
         if let op = pendingOperator, let acc = accumulator {
             var result = acc
-
             switch op {
-            case "+": result = acc + current
-            case "−": result = acc - current
-            case "×": result = acc * current
+            case "+":
+                result = acc + current
+            case "−":
+                result = acc - current
+            case "×":
+                result = acc * current
             case "÷":
                 if current != 0 {
                     result = acc / current
@@ -148,15 +167,17 @@ struct ContentView: View {
                     operationDisplay = ""
                     return
                 }
+            case "^":
+                result = pow(acc, current)
             default: break
             }
-
             accumulator = result
             display = formatted(result)
         } else {
             accumulator = current
         }
     }
+
 
     private func formatted(_ value: Double) -> String {
         let formatter = NumberFormatter()
@@ -173,6 +194,7 @@ struct ContentView: View {
         waitingForNewNumber = false
     }
 }
+
 
 
 #Preview {
