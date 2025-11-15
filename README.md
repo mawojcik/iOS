@@ -13,5 +13,6 @@
 
 Kod: [exercise1](https://github.com/mawojcik/iOS/tree/main/zadanie1)
 Nagranie: 
-https://github.com/user-attachments/assets/5266cb6f-1951-41ce-8f81-1a9d9c770c27
+
+https://github.com/user-attachments/assets/d5166b80-fee6-4281-b4c9-a12d01b4be54
 
