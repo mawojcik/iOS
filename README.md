@@ -11,7 +11,8 @@
 :white_check_mark: 5.0 Wersja ma się skalować na tablet [Link do commita 5](https://github.com/mawojcik/iOS/commit/7bb87ff0f52f459ac0c7ba91e952968c9a57de22)
 
 
-Kod: [exercise1](https://github.com/mawojcik/iOS/tree/main/zadanie1)
+Kod: [zadanie1](https://github.com/mawojcik/iOS/tree/main/zadanie1)
+
 Nagranie: 
 
 https://github.com/user-attachments/assets/d5166b80-fee6-4281-b4c9-a12d01b4be54
