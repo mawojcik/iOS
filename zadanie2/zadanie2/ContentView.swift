@@ -7,26 +7,33 @@ struct TaskItem: Identifiable {
 }
 
 struct ContentView: View {
-    let tasks: [TaskItem] = [
+    @State private var tasks: [TaskItem] = [
         TaskItem(title: "Zrobić zakupy spożywcze", icon: "🛒"),
-                TaskItem(title: "Wyprowadzić psa", icon: "🐕"),
-                TaskItem(title: "Napisać raport w pracy", icon: "💻"),
-                TaskItem(title: "Umyć samochód", icon: "🚗"),
-                TaskItem(title: "Przeczytać rozdział książki", icon: "📖"),
-                TaskItem(title: "Opłacić rachunki", icon: "💸")
+        TaskItem(title: "Wyprowadzić psa", icon: "🐕"),
+        TaskItem(title: "Napisać raport w pracy", icon: "💻"),
+        TaskItem(title: "Umyć samochód", icon: "🚗"),
+        TaskItem(title: "Przeczytać rozdział książki", icon: "📖"),
+        TaskItem(title: "Opłacić rachunki", icon: "💸")
     ]
 
     var body: some View {
         NavigationStack {
-            List(tasks) { task in
-                HStack {
-                    Text(task.icon)
-                        .font(.title2)
-                    Text(task.title)
+            List {
+                ForEach(tasks) { task in
+                    HStack {
+                        Text(task.icon)
+                            .font(.title2)
+                        Text(task.title)
+                    }
                 }
+                .onDelete(perform: deleteItems)
             }
             .navigationTitle("Lista zadań")
         }
+    }
+
+    func deleteItems(at offsets: IndexSet) {
+        tasks.remove(atOffsets: offsets)
     }
 }
 
