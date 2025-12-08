@@ -39,20 +39,24 @@ struct ContentView: View {
         NavigationStack {
             List {
                 ForEach($tasks) { $task in
-                    NavigationLink(destination: EditTaskView(task: $task)) {
-                        HStack {
-                            Text($task.icon.wrappedValue)
-                                .font(.title2)
-                            
-                            Text($task.title.wrappedValue)
-                                .strikethrough($task.isCompleted.wrappedValue)
-                                .foregroundColor($task.isCompleted.wrappedValue ? .gray : .primary)
-                            
-                            Spacer()
-                            
-                            if $task.isCompleted.wrappedValue {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
+                    HStack {
+                        Image(systemName: $task.isCompleted.wrappedValue ? "checkmark.circle.fill" : "circle")
+                            .font(.title2)
+                            .foregroundColor($task.isCompleted.wrappedValue ? .green : .gray)
+                            .onTapGesture {
+                                withAnimation {
+                                    $task.isCompleted.wrappedValue.toggle()
+                                }
+                            }
+                        
+                        NavigationLink(destination: EditTaskView(task: $task)) {
+                            HStack {
+                                Text($task.icon.wrappedValue)
+                                    .font(.title2)
+                                
+                                Text($task.title.wrappedValue)
+                                    .strikethrough($task.isCompleted.wrappedValue)
+                                    .foregroundColor($task.isCompleted.wrappedValue ? .gray : .primary)
                             }
                         }
                     }
