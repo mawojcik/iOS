@@ -2,28 +2,59 @@ import SwiftUI
 
 struct TaskItem: Identifiable {
     let id = UUID()
-    let title: String
-    let icon: String
+    var title: String
+    var icon: String
+    var isCompleted: Bool
+}
+
+struct EditTaskView: View {
+    @Binding var task: TaskItem
+
+    var body: some View {
+        Form {
+            Section(header: Text("Szczegóły")) {
+                TextField("Tytuł", text: $task.title)
+                TextField("Emoji", text: $task.icon)
+            }
+            
+            Section(header: Text("Status")) {
+                Toggle("Zrobione", isOn: $task.isCompleted)
+            }
+        }
+        .navigationTitle("Edycja zadania")
+    }
 }
 
 struct ContentView: View {
     @State private var tasks: [TaskItem] = [
-        TaskItem(title: "Zrobić zakupy spożywcze", icon: "🛒"),
-        TaskItem(title: "Wyprowadzić psa", icon: "🐕"),
-        TaskItem(title: "Napisać raport w pracy", icon: "💻"),
-        TaskItem(title: "Umyć samochód", icon: "🚗"),
-        TaskItem(title: "Przeczytać rozdział książki", icon: "📖"),
-        TaskItem(title: "Opłacić rachunki", icon: "💸")
+        TaskItem(title: "Zrobić zakupy spożywcze", icon: "🛒", isCompleted: false),
+        TaskItem(title: "Wyprowadzić psa", icon: "🐕", isCompleted: true),
+        TaskItem(title: "Napisać raport w pracy", icon: "💻", isCompleted: false),
+        TaskItem(title: "Umyć samochód", icon: "🚗", isCompleted: false),
+        TaskItem(title: "Przeczytać rozdział książki", icon: "📖", isCompleted: false),
+        TaskItem(title: "Opłacić rachunki", icon: "💸", isCompleted: false)
     ]
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(tasks) { task in
-                    HStack {
-                        Text(task.icon)
-                            .font(.title2)
-                        Text(task.title)
+                ForEach($tasks) { $task in
+                    NavigationLink(destination: EditTaskView(task: $task)) {
+                        HStack {
+                            Text($task.icon.wrappedValue)
+                                .font(.title2)
+                            
+                            Text($task.title.wrappedValue)
+                                .strikethrough($task.isCompleted.wrappedValue)
+                                .foregroundColor($task.isCompleted.wrappedValue ? .gray : .primary)
+                            
+                            Spacer()
+                            
+                            if $task.isCompleted.wrappedValue {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                            }
+                        }
                     }
                 }
                 .onDelete(perform: deleteItems)
