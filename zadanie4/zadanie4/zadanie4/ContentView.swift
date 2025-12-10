@@ -113,8 +113,38 @@ class DataSyncManager: ObservableObject {
             }
             
         } catch {
-            self.lastError = "Błąd: \(error.localizedDescription)"
+            self.lastError = "Błąd synchronizacji: \(error.localizedDescription)"
             print("SYNC ERROR: \(error)")
+        }
+    }
+    
+    func addProduct(name: String, price: Double, categoryId: Int, context: NSManagedObjectContext) async -> Bool {
+        guard let url = URL(string: "http://127.0.0.1:3000/products") else { return false }
+        
+        let newProductData: [String: Any] = [
+            "name": name,
+            "price": price,
+            "categoryId": categoryId
+        ]
+        
+        do {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: newProductData)
+            
+            let (_, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 201 {
+                await syncData(context: context)
+                return true
+            } else {
+                self.lastError = "Serwer odrzucił dodawanie produktu."
+                return false
+            }
+        } catch {
+            self.lastError = "Błąd dodawania: \(error.localizedDescription)"
+            return false
         }
     }
 }
@@ -126,9 +156,87 @@ extension OrderEntity {
     }
 }
 
+struct AddProductView: View {
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.managedObjectContext) var viewContext
+    @ObservedObject var syncManager: DataSyncManager
+    
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CategoryEntity.name, ascending: true)])
+    var categories: FetchedResults<CategoryEntity>
+    
+    @State private var name: String = ""
+    @State private var priceString: String = ""
+    @State private var selectedCategory: CategoryEntity?
+    @State private var isSaving = false
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Dane produktu")) {
+                    TextField("Nazwa", text: $name)
+                    TextField("Cena", text: $priceString)
+                        .keyboardType(.decimalPad)
+                    
+                    if categories.isEmpty {
+                        Text("Brak kategorii. Pobierz dane.")
+                            .foregroundStyle(.red)
+                    } else {
+                        Picker("Kategoria", selection: $selectedCategory) {
+                            Text("Wybierz...").tag(nil as CategoryEntity?)
+                            ForEach(categories) { category in
+                                Text(category.name ?? "Bez nazwy").tag(category as CategoryEntity?)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Nowy produkt")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Anuluj") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Zapisz") {
+                        saveProduct()
+                    }
+                    .disabled(name.isEmpty || priceString.isEmpty || selectedCategory == nil || isSaving)
+                }
+            }
+            .overlay {
+                if isSaving {
+                    ProgressView("Wysyłanie...")
+                        .padding()
+                        .background(.regularMaterial)
+                        .cornerRadius(10)
+                }
+            }
+        }
+    }
+    
+    func saveProduct() {
+        guard let price = Double(priceString.replacingOccurrences(of: ",", with: ".")),
+              let category = selectedCategory else { return }
+        
+        isSaving = true
+        Task {
+            let success = await syncManager.addProduct(
+                name: name,
+                price: price,
+                categoryId: Int(category.id),
+                context: viewContext
+            )
+            isSaving = false
+            if success {
+                dismiss()
+            }
+        }
+    }
+}
+
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var syncManager = DataSyncManager()
+    @State private var showingAddProduct = false
     
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \ProductEntity.name, ascending: true)],
@@ -204,6 +312,16 @@ struct ContentView: View {
                     }
                 }
                 .navigationTitle("Produkty")
+                .toolbar {
+                    Button {
+                        showingAddProduct = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+                .sheet(isPresented: $showingAddProduct) {
+                    AddProductView(syncManager: syncManager)
+                }
                 .refreshable {
                     await syncManager.syncData(context: viewContext)
                 }
