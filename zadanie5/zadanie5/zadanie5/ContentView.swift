@@ -13,30 +13,28 @@ struct ContentView: View {
                         .frame(width: 100, height: 100)
                         .foregroundColor(.green)
 
-                    Text("Zalogowano pomyślnie!")
+                    Text("Zalogowano")
                         .font(.title)
                         .bold()
 
-                    Text("Twój token:")
-                        .foregroundColor(.gray)
-
                     Text(viewModel.token)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
                         .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
 
                     Button("Wyloguj") {
                         viewModel.logout()
                     }
                     .buttonStyle(.borderedProminent)
+
+                    Spacer()
                 }
                 .padding()
                 .navigationTitle("Zadanie5")
             } else {
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     Picker("", selection: $viewModel.isLoginMode) {
                         Text("Logowanie").tag(true)
                         Text("Rejestracja").tag(false)
@@ -78,22 +76,15 @@ struct ContentView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.isLoading)
 
                     if viewModel.isLoginMode {
-                        Button {
+                        Button("Zaloguj przez Google") {
                             viewModel.googleLogin()
-                        } label: {
-                            Text("Zaloguj przez Google")
-                                .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
 
-                        Button {
+                        Button("Zaloguj przez GitHub") {
                             Task { await viewModel.startGitHubDeviceFlow() }
-                        } label: {
-                            Text("Zaloguj przez GitHub")
-                                .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
 

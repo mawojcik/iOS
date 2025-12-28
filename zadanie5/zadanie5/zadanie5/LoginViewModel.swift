@@ -2,6 +2,28 @@ import Foundation
 import SwiftUI
 import GoogleSignIn
 
+struct AuthRequest: Codable {
+    let email: String
+    let password: String
+}
+
+struct TokenResponse: Codable {
+    let token: String
+}
+
+struct GitHubDeviceCodeResponse: Codable {
+    let device_code: String
+    let user_code: String
+    let verification_uri: String
+    let expires_in: Int
+    let interval: Int
+}
+
+struct GitHubAccessTokenResponse: Codable {
+    let access_token: String?
+    let error: String?
+}
+
 class LoginViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
@@ -11,7 +33,6 @@ class LoginViewModel: ObservableObject {
     @Published var showError = false
     @Published var isLoading = false
     @Published var isLoginMode = true
-    @Published var registrationSuccess = false
     @Published var infoText: String? = nil
 
     private let baseURL = "http://127.0.0.1:8000"
@@ -19,16 +40,13 @@ class LoginViewModel: ObservableObject {
 
     @Published var ghUserCode: String?
     @Published var ghVerificationURL: URL?
+
     private var ghDeviceCode: String?
-    private var ghIntervalSeconds: Int = 5
+    private var ghIntervalSeconds = 5
     private var ghPollingTask: Task<Void, Never>?
 
     func performAction() {
-        if isLoginMode {
-            login()
-        } else {
-            register()
-        }
+        isLoginMode ? login() : register()
     }
 
     func logout() {
@@ -42,18 +60,24 @@ class LoginViewModel: ObservableObject {
 
     func googleLogin() {
         isLoading = true
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
             isLoading = false
             return
         }
 
-        GIDSignIn.sharedInstance.signIn(withPresenting: rootVC) { result, error in
+        GIDSignIn.sharedInstance.signIn(withPresenting: root) { result, _ in
             DispatchQueue.main.async {
                 self.isLoading = false
-                if let result {
-                    self.token = result.user.idToken?.tokenString ?? result.user.accessToken.tokenString
-                    self.isAuthenticated = true
+                guard let result else { return }
+
+                let accessToken = result.user.accessToken.tokenString
+                Task {
+                    await self.oauthBackendLogin(
+                        email: "google_user@oauth.local",
+                        password: "GOOGLE_OAUTH"
+                    )
                 }
             }
         }
@@ -67,9 +91,9 @@ class LoginViewModel: ObservableObject {
         do {
             let resp = try await githubRequestDeviceCode()
             ghUserCode = resp.user_code
+            ghVerificationURL = URL(string: resp.verification_uri)
             ghDeviceCode = resp.device_code
             ghIntervalSeconds = max(resp.interval, 5)
-            ghVerificationURL = URL(string: resp.verification_uri)
             isLoading = false
 
             ghPollingTask = Task {
@@ -87,9 +111,11 @@ class LoginViewModel: ObservableObject {
         while !Task.isCancelled {
             do {
                 let res = try await githubPollAccessToken(deviceCode: deviceCode)
-                if let token = res.access_token {
-                    self.token = token
-                    self.isAuthenticated = true
+                if let _ = res.access_token {
+                    await oauthBackendLogin(
+                        email: "github_user@oauth.local",
+                        password: "GITHUB_OAUTH"
+                    )
                     stopGitHubFlow()
                     return
                 }
@@ -109,15 +135,53 @@ class LoginViewModel: ObservableObject {
         ghDeviceCode = nil
     }
 
+    @MainActor
+    private func oauthBackendLogin(email: String, password: String) async {
+        guard let url = URL(string: "\(baseURL)/login") else { return }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONEncoder().encode(AuthRequest(email: email, password: password))
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            if let http = response as? HTTPURLResponse, http.statusCode == 200 {
+                let decoded = try JSONDecoder().decode(TokenResponse.self, from: data)
+                token = decoded.token
+                isAuthenticated = true
+                return
+            }
+            await oauthRegisterThenLogin(email: email, password: password)
+        } catch {}
+    }
+
+    @MainActor
+    private func oauthRegisterThenLogin(email: String, password: String) async {
+        guard let url = URL(string: "\(baseURL)/register") else { return }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONEncoder().encode(AuthRequest(email: email, password: password))
+
+        do {
+            _ = try await URLSession.shared.data(for: req)
+            await oauthBackendLogin(email: email, password: password)
+        } catch {}
+    }
+
+    private func login() {}
+    private func register() {}
+
     private func formBody(_ dict: [String: String]) -> Data {
-        let s = dict.map { key, value in
-            let k = key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? key
-            let v = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
+        let s = dict.map {
+            let k = $0.key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.key
+            let v = $0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.value
             return "\(k)=\(v)"
         }.joined(separator: "&")
         return Data(s.utf8)
     }
-
 
     private func githubRequestDeviceCode() async throws -> GitHubDeviceCodeResponse {
         var req = URLRequest(url: URL(string: "https://github.com/login/device/code")!)
@@ -145,20 +209,4 @@ class LoginViewModel: ObservableObject {
         let (data, _) = try await URLSession.shared.data(for: req)
         return try JSONDecoder().decode(GitHubAccessTokenResponse.self, from: data)
     }
-
-    private func login() {}
-    private func register() {}
-}
-
-struct GitHubDeviceCodeResponse: Codable {
-    let device_code: String
-    let user_code: String
-    let verification_uri: String
-    let expires_in: Int
-    let interval: Int
-}
-
-struct GitHubAccessTokenResponse: Codable {
-    let access_token: String?
-    let error: String?
 }
