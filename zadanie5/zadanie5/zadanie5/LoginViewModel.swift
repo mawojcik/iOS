@@ -2,15 +2,6 @@ import Foundation
 import SwiftUI
 import GoogleSignIn
 
-struct AuthRequest: Encodable {
-    let email: String
-    let password: String
-}
-
-struct TokenResponse: Decodable {
-    let token: String
-}
-
 class LoginViewModel: ObservableObject {
     @Published var email = ""
     @Published var password = ""
@@ -21,9 +12,17 @@ class LoginViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isLoginMode = true
     @Published var registrationSuccess = false
-    
+    @Published var infoText: String? = nil
+
     private let baseURL = "http://127.0.0.1:8000"
-    
+    private let githubClientID = "Ov23liD175Wp0tswmhl5"
+
+    @Published var ghUserCode: String?
+    @Published var ghVerificationURL: URL?
+    private var ghDeviceCode: String?
+    private var ghIntervalSeconds: Int = 5
+    private var ghPollingTask: Task<Void, Never>?
+
     func performAction() {
         if isLoginMode {
             login()
@@ -31,121 +30,135 @@ class LoginViewModel: ObservableObject {
             register()
         }
     }
-    
-    func login() {
-        guard let url = URL(string: "\(baseURL)/login") else { return }
-        executeRequest(url: url)
+
+    func logout() {
+        GIDSignIn.sharedInstance.signOut()
+        stopGitHubFlow()
+        isAuthenticated = false
+        token = ""
+        email = ""
+        password = ""
     }
-    
-    func register() {
-        guard let url = URL(string: "\(baseURL)/register") else { return }
-        executeRequest(url: url)
-    }
-    
+
     func googleLogin() {
-        errorMessage = ""
-        showError = false
         isLoading = true
-
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-            errorMessage = "Brak aktywnego okna"
-            showError = true
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
             isLoading = false
             return
         }
 
-        guard let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
-            errorMessage = "Brak rootViewController"
-            showError = true
-            isLoading = false
-            return
-        }
-
-        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { signInResult, error in
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootVC) { result, error in
             DispatchQueue.main.async {
                 self.isLoading = false
-
-                if let error = error {
-                    self.errorMessage = "Google: \(error.localizedDescription)"
-                    self.showError = true
-                    return
+                if let result {
+                    self.token = result.user.idToken?.tokenString ?? result.user.accessToken.tokenString
+                    self.isAuthenticated = true
                 }
-
-                guard let result = signInResult else {
-                    self.errorMessage = "Google: brak wyniku logowania"
-                    self.showError = true
-                    return
-                }
-
-                let idToken = result.user.idToken?.tokenString
-                let accessToken = result.user.accessToken.tokenString
-
-                self.token = (idToken?.isEmpty == false) ? idToken! : accessToken
-                self.isAuthenticated = true
             }
         }
     }
-    
-    private func executeRequest(url: URL) {
+
+    @MainActor
+    func startGitHubDeviceFlow() async {
         isLoading = true
-        
-        let body = AuthRequest(email: email, password: password)
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+        stopGitHubFlow()
+
         do {
-            request.httpBody = try JSONEncoder().encode(body)
+            let resp = try await githubRequestDeviceCode()
+            ghUserCode = resp.user_code
+            ghDeviceCode = resp.device_code
+            ghIntervalSeconds = max(resp.interval, 5)
+            ghVerificationURL = URL(string: resp.verification_uri)
+            isLoading = false
+
+            ghPollingTask = Task {
+                await pollGitHubForToken()
+            }
         } catch {
             isLoading = false
-            return
         }
-        
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                
-                if error != nil {
-                    self?.errorMessage = "Błąd połączenia z serwerem"
-                    self?.showError = true
+    }
+
+    @MainActor
+    private func pollGitHubForToken() async {
+        guard let deviceCode = ghDeviceCode else { return }
+
+        while !Task.isCancelled {
+            do {
+                let res = try await githubPollAccessToken(deviceCode: deviceCode)
+                if let token = res.access_token {
+                    self.token = token
+                    self.isAuthenticated = true
+                    stopGitHubFlow()
                     return
                 }
-                
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    self?.errorMessage = "Nieznany błąd serwera"
-                    self?.showError = true
-                    return
-                }
-                
-                if httpResponse.statusCode == 200 {
-                    if self?.isLoginMode == true {
-                        if let data = data, let decodedResponse = try? JSONDecoder().decode(TokenResponse.self, from: data) {
-                            self?.token = decodedResponse.token
-                            self?.isAuthenticated = true
-                        }
-                    } else {
-                        self?.registrationSuccess = true
-                        self?.isLoginMode = true
-                    }
-                } else {
-                    self?.handleError(statusCode: httpResponse.statusCode)
-                }
+                try await Task.sleep(nanoseconds: UInt64(ghIntervalSeconds) * 1_000_000_000)
+            } catch {
+                stopGitHubFlow()
+                return
             }
-        }.resume()
-    }
-    
-    private func handleError(statusCode: Int) {
-        switch statusCode {
-        case 400:
-            errorMessage = "Brak email lub hasła"
-        case 401:
-            errorMessage = "Niepoprawny email lub hasło"
-        case 409:
-            errorMessage = "Taki użytkownik już istnieje"
-        default:
-            errorMessage = "Błąd serwera: \(statusCode)"
         }
-        showError = true
     }
+
+    func stopGitHubFlow() {
+        ghPollingTask?.cancel()
+        ghPollingTask = nil
+        ghUserCode = nil
+        ghVerificationURL = nil
+        ghDeviceCode = nil
+    }
+
+    private func formBody(_ dict: [String: String]) -> Data {
+        let s = dict.map { key, value in
+            let k = key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? key
+            let v = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? value
+            return "\(k)=\(v)"
+        }.joined(separator: "&")
+        return Data(s.utf8)
+    }
+
+
+    private func githubRequestDeviceCode() async throws -> GitHubDeviceCodeResponse {
+        var req = URLRequest(url: URL(string: "https://github.com/login/device/code")!)
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.httpBody = formBody([
+            "client_id": githubClientID,
+            "scope": "read:user user:email"
+        ])
+        let (data, _) = try await URLSession.shared.data(for: req)
+        return try JSONDecoder().decode(GitHubDeviceCodeResponse.self, from: data)
+    }
+
+    private func githubPollAccessToken(deviceCode: String) async throws -> GitHubAccessTokenResponse {
+        var req = URLRequest(url: URL(string: "https://github.com/login/oauth/access_token")!)
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.httpBody = formBody([
+            "client_id": githubClientID,
+            "device_code": deviceCode,
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+        ])
+        let (data, _) = try await URLSession.shared.data(for: req)
+        return try JSONDecoder().decode(GitHubAccessTokenResponse.self, from: data)
+    }
+
+    private func login() {}
+    private func register() {}
+}
+
+struct GitHubDeviceCodeResponse: Codable {
+    let device_code: String
+    let user_code: String
+    let verification_uri: String
+    let expires_in: Int
+    let interval: Int
+}
+
+struct GitHubAccessTokenResponse: Codable {
+    let access_token: String?
+    let error: String?
 }

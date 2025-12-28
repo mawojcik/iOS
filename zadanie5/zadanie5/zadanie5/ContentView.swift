@@ -2,134 +2,126 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = LoginViewModel()
-    
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
-        if viewModel.isAuthenticated {
-            VStack(spacing: 20) {
-                Image(systemName: "checkmark.circle.fill")
-                    .resizable()
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.green)
-                
-                Text("Zalogowano pomyślnie!")
-                    .font(.title)
-                    .bold()
-                
-                Text("Twój token sesji:")
-                    .foregroundColor(.gray)
-                
-                Text(viewModel.token)
-                    .font(.system(.caption, design: .monospaced))
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                
-                Button("Wyloguj") {
-                    viewModel.isAuthenticated = false
-                    viewModel.email = ""
-                    viewModel.password = ""
+        NavigationView {
+            if viewModel.isAuthenticated {
+                VStack(spacing: 20) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .resizable()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.green)
+
+                    Text("Zalogowano pomyślnie!")
+                        .font(.title)
+                        .bold()
+
+                    Text("Twój token:")
+                        .foregroundColor(.gray)
+
+                    Text(viewModel.token)
+                        .font(.system(.caption, design: .monospaced))
+                        .padding()
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Button("Wyloguj") {
+                        viewModel.logout()
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
                 .padding()
-            }
-            .padding()
-        } else {
-            ZStack {
-                VStack(spacing: 20) {
-                    Text(viewModel.isLoginMode ? "Logowanie" : "Rejestracja")
-                        .font(.largeTitle)
-                        .bold()
-                        .padding(.bottom, 10)
-                    
-                    Picker("Tryb", selection: $viewModel.isLoginMode) {
+                .navigationTitle("Zadanie5")
+            } else {
+                VStack(spacing: 16) {
+                    Picker("", selection: $viewModel.isLoginMode) {
                         Text("Logowanie").tag(true)
                         Text("Rejestracja").tag(false)
                     }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .padding(.horizontal)
-                    
+                    .pickerStyle(.segmented)
+
+                    Text(viewModel.isLoginMode ? "Logowanie" : "Rejestracja")
+                        .font(.title2)
+                        .bold()
+
                     TextField("Email", text: $viewModel.email)
-                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                    
+                        .textFieldStyle(.roundedBorder)
+
                     SecureField("Hasło", text: $viewModel.password)
-                        .textContentType(.password)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                    
-                    Button(action: {
+                        .textFieldStyle(.roundedBorder)
+
+                    if let info = viewModel.infoText {
+                        Text(info)
+                            .foregroundColor(.green)
+                            .font(.footnote)
+                    }
+
+                    if viewModel.showError {
+                        Text(viewModel.errorMessage)
+                            .foregroundColor(.red)
+                            .font(.footnote)
+                    }
+
+                    Button {
                         viewModel.performAction()
-                    }) {
-                        Text(viewModel.isLoginMode ? "Zaloguj się" : "Zarejestruj się")
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(viewModel.isLoginMode ? Color.blue : Color.green)
-                            .cornerRadius(10)
+                    } label: {
+                        if viewModel.isLoading {
+                            ProgressView()
+                        } else {
+                            Text(viewModel.isLoginMode ? "Zaloguj" : "Zarejestruj")
+                                .frame(maxWidth: .infinity)
+                        }
                     }
-                    .padding(.horizontal)
+                    .buttonStyle(.borderedProminent)
                     .disabled(viewModel.isLoading)
-                    
+
                     if viewModel.isLoginMode {
-                        HStack {
-                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.5))
-                            Text("LUB").font(.caption).foregroundColor(.gray)
-                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.5))
-                        }
-                        .padding(.horizontal)
-                        
-                        Button(action: {
+                        Button {
                             viewModel.googleLogin()
-                        }) {
-                            HStack {
-                                Image(systemName: "globe")
-                                Text("Zaloguj przez Google")
-                            }
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(10)
+                        } label: {
+                            Text("Zaloguj przez Google")
+                                .frame(maxWidth: .infinity)
                         }
-                        .padding(.horizontal)
-                        .disabled(viewModel.isLoading)
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            Task { await viewModel.startGitHubDeviceFlow() }
+                        } label: {
+                            Text("Zaloguj przez GitHub")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        if let code = viewModel.ghUserCode,
+                           let url = viewModel.ghVerificationURL {
+                            VStack(spacing: 8) {
+                                Text(code)
+                                    .font(.title)
+                                    .bold()
+
+                                Button("Otwórz GitHub") {
+                                    openURL(url)
+                                }
+                                .buttonStyle(.borderedProminent)
+
+                                Button("Anuluj") {
+                                    viewModel.stopGitHubFlow()
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
                     }
+
+                    Spacer()
                 }
-                
-                if viewModel.isLoading {
-                    Color.black.opacity(0.4)
-                        .edgesIgnoringSafeArea(.all)
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(2)
-                }
-            }
-            .alert(isPresented: $viewModel.showError) {
-                Alert(
-                    title: Text("Błąd"),
-                    message: Text(viewModel.errorMessage),
-                    dismissButton: .default(Text("OK"))
-                )
-            }
-            .alert(isPresented: $viewModel.registrationSuccess) {
-                Alert(
-                    title: Text("Sukces"),
-                    message: Text("Konto zostało utworzone. Możesz się teraz zalogować."),
-                    dismissButton: .default(Text("OK"))
-                )
+                .padding()
+                .navigationTitle("Zadanie5")
             }
         }
     }
-}
-
-#Preview {
-    ContentView()
 }
