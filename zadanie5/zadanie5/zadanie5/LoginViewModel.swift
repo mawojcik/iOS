@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import GoogleSignIn
 
 struct AuthRequest: Encodable {
     let email: String
@@ -39,6 +40,50 @@ class LoginViewModel: ObservableObject {
     func register() {
         guard let url = URL(string: "\(baseURL)/register") else { return }
         executeRequest(url: url)
+    }
+    
+    func googleLogin() {
+        errorMessage = ""
+        showError = false
+        isLoading = true
+
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            errorMessage = "Brak aktywnego okna"
+            showError = true
+            isLoading = false
+            return
+        }
+
+        guard let rootViewController = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            errorMessage = "Brak rootViewController"
+            showError = true
+            isLoading = false
+            return
+        }
+
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { signInResult, error in
+            DispatchQueue.main.async {
+                self.isLoading = false
+
+                if let error = error {
+                    self.errorMessage = "Google: \(error.localizedDescription)"
+                    self.showError = true
+                    return
+                }
+
+                guard let result = signInResult else {
+                    self.errorMessage = "Google: brak wyniku logowania"
+                    self.showError = true
+                    return
+                }
+
+                let idToken = result.user.idToken?.tokenString
+                let accessToken = result.user.accessToken.tokenString
+
+                self.token = (idToken?.isEmpty == false) ? idToken! : accessToken
+                self.isAuthenticated = true
+            }
+        }
     }
     
     private func executeRequest(url: URL) {

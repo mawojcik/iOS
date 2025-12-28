@@ -6,13 +6,31 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A67D156E2F2BF59D0083A3A1 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A67D156D2F2BF59D0083A3A1 /* GoogleSignIn */; };
+		A67D15702F2BF59D0083A3A1 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A67D156F2F2BF59D0083A3A1 /* GoogleSignInSwift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		A6E3DC982F26A98E0035A6CE /* zadanie5.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = zadanie5.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A67D15712F2BF6060083A3A1 /* Exceptions for "zadanie5" folder in "zadanie5" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A6E3DC972F26A98E0035A6CE /* zadanie5 */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A6E3DC9A2F26A98E0035A6CE /* zadanie5 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A67D15712F2BF6060083A3A1 /* Exceptions for "zadanie5" folder in "zadanie5" target */,
+			);
 			path = zadanie5;
 			sourceTree = "<group>";
 		};
@@ -23,6 +41,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A67D156E2F2BF59D0083A3A1 /* GoogleSignIn in Frameworks */,
+				A67D15702F2BF59D0083A3A1 /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +85,8 @@
 			);
 			name = zadanie5;
 			packageProductDependencies = (
+				A67D156D2F2BF59D0083A3A1 /* GoogleSignIn */,
+				A67D156F2F2BF59D0083A3A1 /* GoogleSignInSwift */,
 			);
 			productName = zadanie5;
 			productReference = A6E3DC982F26A98E0035A6CE /* zadanie5.app */;
@@ -94,6 +116,9 @@
 			);
 			mainGroup = A6E3DC8F2F26A98E0035A6CE;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A67D156C2F2BF59D0083A3A1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A6E3DC992F26A98E0035A6CE /* Products */;
 			projectDirPath = "";
@@ -253,6 +278,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = zadanie5/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -280,6 +306,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = zadanie5/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -320,6 +347,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A67D156C2F2BF59D0083A3A1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A67D156D2F2BF59D0083A3A1 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A67D156C2F2BF59D0083A3A1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		A67D156F2F2BF59D0083A3A1 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A67D156C2F2BF59D0083A3A1 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A6E3DC902F26A98E0035A6CE /* Project object */;
 }

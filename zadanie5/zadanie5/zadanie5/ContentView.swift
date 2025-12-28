@@ -23,6 +23,8 @@ struct ContentView: View {
                     .padding()
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                 
                 Button("Wyloguj") {
                     viewModel.isAuthenticated = false
@@ -31,6 +33,7 @@ struct ContentView: View {
                 }
                 .padding()
             }
+            .padding()
         } else {
             ZStack {
                 VStack(spacing: 20) {
@@ -74,6 +77,31 @@ struct ContentView: View {
                     }
                     .padding(.horizontal)
                     .disabled(viewModel.isLoading)
+                    
+                    if viewModel.isLoginMode {
+                        HStack {
+                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.5))
+                            Text("LUB").font(.caption).foregroundColor(.gray)
+                            Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.5))
+                        }
+                        .padding(.horizontal)
+                        
+                        Button(action: {
+                            viewModel.googleLogin()
+                        }) {
+                            HStack {
+                                Image(systemName: "globe")
+                                Text("Zaloguj przez Google")
+                            }
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                        }
+                        .padding(.horizontal)
+                        .disabled(viewModel.isLoading)
+                    }
                 }
                 
                 if viewModel.isLoading {
