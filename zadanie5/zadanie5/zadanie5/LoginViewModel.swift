@@ -18,10 +18,30 @@ class LoginViewModel: ObservableObject {
     @Published var errorMessage = ""
     @Published var showError = false
     @Published var isLoading = false
+    @Published var isLoginMode = true
+    @Published var registrationSuccess = false
+    
+    private let baseURL = "http://127.0.0.1:8000"
+    
+    func performAction() {
+        if isLoginMode {
+            login()
+        } else {
+            register()
+        }
+    }
     
     func login() {
-        guard let url = URL(string: "http://127.0.0.1:8000/login") else { return }
-        
+        guard let url = URL(string: "\(baseURL)/login") else { return }
+        executeRequest(url: url)
+    }
+    
+    func register() {
+        guard let url = URL(string: "\(baseURL)/register") else { return }
+        executeRequest(url: url)
+    }
+    
+    private func executeRequest(url: URL) {
         isLoading = true
         
         let body = AuthRequest(email: email, password: password)
@@ -53,20 +73,34 @@ class LoginViewModel: ObservableObject {
                     return
                 }
                 
-                if httpResponse.statusCode == 200, let data = data {
-                    if let decodedResponse = try? JSONDecoder().decode(TokenResponse.self, from: data) {
-                        self?.token = decodedResponse.token
-                        self?.isAuthenticated = true
-                        return
+                if httpResponse.statusCode == 200 {
+                    if self?.isLoginMode == true {
+                        if let data = data, let decodedResponse = try? JSONDecoder().decode(TokenResponse.self, from: data) {
+                            self?.token = decodedResponse.token
+                            self?.isAuthenticated = true
+                        }
+                    } else {
+                        self?.registrationSuccess = true
+                        self?.isLoginMode = true
                     }
-                } else if httpResponse.statusCode == 401 {
-                    self?.errorMessage = "Niepoprawny email lub hasło"
-                    self?.showError = true
                 } else {
-                    self?.errorMessage = "Błąd serwera: \(httpResponse.statusCode)"
-                    self?.showError = true
+                    self?.handleError(statusCode: httpResponse.statusCode)
                 }
             }
         }.resume()
+    }
+    
+    private func handleError(statusCode: Int) {
+        switch statusCode {
+        case 400:
+            errorMessage = "Brak email lub hasła"
+        case 401:
+            errorMessage = "Niepoprawny email lub hasło"
+        case 409:
+            errorMessage = "Taki użytkownik już istnieje"
+        default:
+            errorMessage = "Błąd serwera: \(statusCode)"
+        }
+        showError = true
     }
 }

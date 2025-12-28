@@ -34,10 +34,17 @@ struct ContentView: View {
         } else {
             ZStack {
                 VStack(spacing: 20) {
-                    Text("Logowanie")
+                    Text(viewModel.isLoginMode ? "Logowanie" : "Rejestracja")
                         .font(.largeTitle)
                         .bold()
-                        .padding(.bottom, 30)
+                        .padding(.bottom, 10)
+                    
+                    Picker("Tryb", selection: $viewModel.isLoginMode) {
+                        Text("Logowanie").tag(true)
+                        Text("Rejestracja").tag(false)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .padding(.horizontal)
                     
                     TextField("Email", text: $viewModel.email)
                         .textContentType(.emailAddress)
@@ -56,13 +63,13 @@ struct ContentView: View {
                         .padding(.horizontal)
                     
                     Button(action: {
-                        viewModel.login()
+                        viewModel.performAction()
                     }) {
-                        Text("Zaloguj się")
+                        Text(viewModel.isLoginMode ? "Zaloguj się" : "Zarejestruj się")
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
+                            .background(viewModel.isLoginMode ? Color.blue : Color.green)
                             .cornerRadius(10)
                     }
                     .padding(.horizontal)
@@ -81,6 +88,13 @@ struct ContentView: View {
                 Alert(
                     title: Text("Błąd"),
                     message: Text(viewModel.errorMessage),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
+            .alert(isPresented: $viewModel.registrationSuccess) {
+                Alert(
+                    title: Text("Sukces"),
+                    message: Text("Konto zostało utworzone. Możesz się teraz zalogować."),
                     dismissButton: .default(Text("OK"))
                 )
             }
