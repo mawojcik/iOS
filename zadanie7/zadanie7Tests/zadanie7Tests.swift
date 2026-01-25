@@ -1,29 +1,88 @@
 import XCTest
 @testable import zadanie7
 
-final class zadanie7Tests: XCTestCase {
+final class TodoAppTests: XCTestCase {
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+    var viewModel: TodoViewModel!
+
+    override func setUp() {
+        super.setUp()
+        viewModel = TodoViewModel()
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    override func tearDown() {
+        viewModel = nil
+        super.tearDown()
     }
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+    func testInitialState() {
+        XCTAssertNotNil(viewModel)
+        XCTAssertEqual(viewModel.tasks.count, 4)
+        XCTAssertEqual(viewModel.newTaskTitle, "")
+        XCTAssertFalse(viewModel.tasks.isEmpty)
+        XCTAssertEqual(viewModel.tasks.first?.title, "Zrobić zakupy spożywcze")
+        XCTAssertEqual(viewModel.tasks.last?.title, "Umówić wizytę u lekarza")
     }
 
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
+    func testTodoItemStructure() {
+        let item1 = TodoItem(title: "Test A")
+        let item2 = TodoItem(title: "Test A")
+        
+        XCTAssertEqual(item1.title, "Test A")
+        XCTAssertNotEqual(item1.id, item2.id)
+        XCTAssertNotEqual(item1, item2)
+        XCTAssertNotNil(item1.id)
     }
 
+    func testAddingTask() {
+        viewModel.newTaskTitle = "Nowe Zadanie"
+        viewModel.addTask()
+        
+        XCTAssertEqual(viewModel.tasks.count, 5)
+        XCTAssertEqual(viewModel.tasks.last?.title, "Nowe Zadanie")
+        XCTAssertEqual(viewModel.newTaskTitle, "")
+        XCTAssertTrue(viewModel.tasks.contains { $0.title == "Nowe Zadanie" })
+    }
+
+    func testAddingEmptyTask() {
+        let initialCount = viewModel.tasks.count
+        viewModel.newTaskTitle = ""
+        viewModel.addTask()
+        
+        XCTAssertEqual(viewModel.tasks.count, initialCount)
+        XCTAssertEqual(viewModel.tasks.count, 4)
+    }
+
+    func testDeletingTask() {
+        let firstTaskTitle = viewModel.tasks[0].title
+        let secondTaskTitle = viewModel.tasks[1].title
+        
+        viewModel.deleteTasks(at: IndexSet(integer: 0))
+        
+        XCTAssertEqual(viewModel.tasks.count, 3)
+        XCTAssertNotEqual(viewModel.tasks.first?.title, firstTaskTitle)
+        XCTAssertEqual(viewModel.tasks.first?.title, secondTaskTitle)
+    }
+
+    func testDeleteLastTask() {
+        let lastIndex = viewModel.tasks.count - 1
+        viewModel.deleteTasks(at: IndexSet(integer: lastIndex))
+        
+        XCTAssertEqual(viewModel.tasks.count, 3)
+        XCTAssertNotEqual(viewModel.tasks.last?.title, "Umówić wizytę u lekarza")
+    }
+
+    func testMultipleOperations() {
+        viewModel.deleteTasks(at: IndexSet(integer: 0))
+        XCTAssertEqual(viewModel.tasks.count, 3)
+        
+        viewModel.newTaskTitle = "Zadanie X"
+        viewModel.addTask()
+        XCTAssertEqual(viewModel.tasks.count, 4)
+        XCTAssertEqual(viewModel.tasks.last?.title, "Zadanie X")
+        
+        viewModel.deleteTasks(at: IndexSet(integer: 3))
+        XCTAssertEqual(viewModel.tasks.count, 3)
+        XCTAssertFalse(viewModel.tasks.contains { $0.title == "Zadanie X" })
+    }
 }

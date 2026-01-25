@@ -1,40 +1,53 @@
 import SwiftUI
 
-struct ContentView: View {
-    struct TodoItem: Identifiable {
-        let id = UUID()
-        let title: String
-    }
+struct TodoItem: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+}
 
-    @State private var tasks: [TodoItem] = [
+class TodoViewModel: ObservableObject {
+    @Published var tasks: [TodoItem] = [
         TodoItem(title: "Zrobić zakupy spożywcze"),
         TodoItem(title: "Wyprowadzić psa"),
         TodoItem(title: "Opłacić rachunki"),
         TodoItem(title: "Umówić wizytę u lekarza")
     ]
-    
-    @State private var newTaskTitle: String = ""
+    @Published var newTaskTitle: String = ""
+
+    func addTask() {
+        guard !newTaskTitle.isEmpty else { return }
+        tasks.append(TodoItem(title: newTaskTitle))
+        newTaskTitle = ""
+    }
+
+    func deleteTasks(at offsets: IndexSet) {
+        tasks.remove(atOffsets: offsets)
+    }
+}
+
+struct ContentView: View {
+    @StateObject var viewModel = TodoViewModel()
 
     var body: some View {
         NavigationStack {
             VStack {
                 HStack {
-                    TextField("Dodaj nowe zadanie...", text: $newTaskTitle)
+                    TextField("Dodaj nowe zadanie...", text: $viewModel.newTaskTitle)
                         .textFieldStyle(.roundedBorder)
                     
-                    Button(action: addTask) {
+                    Button(action: viewModel.addTask) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                     }
-                    .disabled(newTaskTitle.isEmpty)
+                    .disabled(viewModel.newTaskTitle.isEmpty)
                 }
                 .padding()
 
                 List {
-                    ForEach(tasks) { task in
+                    ForEach(viewModel.tasks) { task in
                         Text(task.title)
                     }
-                    .onDelete(perform: deleteTasks)
+                    .onDelete(perform: viewModel.deleteTasks)
                 }
                 .listStyle(.plain)
             }
@@ -42,21 +55,6 @@ struct ContentView: View {
             .toolbar {
                 EditButton()
             }
-        }
-    }
-
-    private func addTask() {
-        guard !newTaskTitle.isEmpty else { return }
-        let newTask = TodoItem(title: newTaskTitle)
-        withAnimation {
-            tasks.append(newTask)
-            newTaskTitle = ""
-        }
-    }
-
-    private func deleteTasks(at offsets: IndexSet) {
-        withAnimation {
-            tasks.remove(atOffsets: offsets)
         }
     }
 }
