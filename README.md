@@ -76,7 +76,11 @@ https://github.com/user-attachments/assets/84fd52b8-8c14-4191-9a07-78fa06faa9bf
 Kod: [zadanie4](https://github.com/mawojcik/iOS/tree/main/zadanie4)
 
 Nagranie: 
-https://github.com/user-attachments/assets/2af406b2-0d02-476d-ab88-cebd13c6263a
+
+
+
+https://github.com/user-attachments/assets/72250b0f-fb5a-42d5-9de6-f6bff650c7c8
+
 
 
 **Zadanie 5** OAuth
@@ -95,7 +99,10 @@ https://github.com/user-attachments/assets/2af406b2-0d02-476d-ab88-cebd13c6263a
 Kod: [zadanie5](https://github.com/mawojcik/iOS/tree/main/zadanie5)
 
 Nagranie: 
-https://github.com/user-attachments/assets/023b622a-527b-471d-a0b6-e5396e379ebe
+
+
+
+https://github.com/user-attachments/assets/e0f29078-59d6-448b-9793-71c3049a916f
 
 
 
@@ -115,7 +122,10 @@ https://github.com/user-attachments/assets/023b622a-527b-471d-a0b6-e5396e379ebe
 Kod: [zadanie6](https://github.com/mawojcik/iOS/tree/main/zadanie6)
 
 Nagranie: 
-https://github.com/user-attachments/assets/e3fd945e-5f39-4e17-9cd9-585474a963af
+
+
+
+https://github.com/user-attachments/assets/9a694f6e-b03f-4d1a-81ec-51b78f679c0f
 
 
 **Zadanie 7** Testy
