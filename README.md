@@ -35,6 +35,8 @@ Kod: [zadanie2](https://github.com/mawojcik/iOS/tree/main/zadanie2)
 
 Nagranie: 
 
+https://github.com/user-attachments/assets/e8ef2004-4fff-4309-9335-4b02899d4a2f
+
 
 
 
@@ -74,6 +76,7 @@ https://github.com/user-attachments/assets/84fd52b8-8c14-4191-9a07-78fa06faa9bf
 Kod: [zadanie4](https://github.com/mawojcik/iOS/tree/main/zadanie4)
 
 Nagranie: 
+https://github.com/user-attachments/assets/2af406b2-0d02-476d-ab88-cebd13c6263a
 
 
 **Zadanie 5** OAuth
@@ -92,6 +95,8 @@ Nagranie:
 Kod: [zadanie5](https://github.com/mawojcik/iOS/tree/main/zadanie5)
 
 Nagranie: 
+https://github.com/user-attachments/assets/023b622a-527b-471d-a0b6-e5396e379ebe
+
 
 
 **Zadanie 6** Płatności
@@ -110,6 +115,7 @@ Nagranie:
 Kod: [zadanie6](https://github.com/mawojcik/iOS/tree/main/zadanie6)
 
 Nagranie: 
+https://github.com/user-attachments/assets/e3fd945e-5f39-4e17-9cd9-585474a963af
 
 
 **Zadanie 7** Testy
